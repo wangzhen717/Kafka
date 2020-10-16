@@ -3,7 +3,6 @@ import java.util.{Date, Properties}
 import java.util.Properties
 
 import io.circe._, io.circe.generic.auto._, io.circe.parser._, io.circe.syntax._
-import Streams.CheckIn
 import io.circe.generic.auto._
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.processor.{Processor, ProcessorSupplier}
