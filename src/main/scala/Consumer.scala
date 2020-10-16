@@ -50,6 +50,6 @@ class ScalaConsumerExample(val brokers: String,
 
 object Consumer extends App {
 
-  val example = new ScalaConsumerExample(Const.BROKEN, Const.GROUPID, Const.TOPIC)
+  val example = new ScalaConsumerExample(Const.BROKEN, Const.GROUPID, Const.OUTPUT_TOPIC)
   example.run()
 }
