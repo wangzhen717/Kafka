@@ -1,3 +1,4 @@
+import java.io.{BufferedReader, File, FileReader}
 import java.util.Properties
 
 import io.circe.generic.auto._
@@ -15,10 +16,21 @@ import scala.collection.mutable.ArrayBuffer
 
 object MethodRepartition extends App with CirceSupport {
 
+  private var windowSize = 3
+  private var styleFilePath = ""
+  private var beerStyles: mutable.HashSet[String] = _
+
   override def main(args: Array[String]): Unit = {
+    windowSize = args(0).toInt
+    styleFilePath = args(1)
+    beerStyles = loadBeerStyle(styleFilePath)
+
     val builder = new StreamsBuilder()
     val source = builder.stream[String, CheckIn](Const.INPUT_TOPIC)
     source
+      .filter((_, checkIn) => {
+        beerStyles.contains(checkIn.style)
+      })
       .selectKey((_, _) => "msg")
       .repartition
     val topology = builder.build()
@@ -32,7 +44,7 @@ object MethodRepartition extends App with CirceSupport {
     topology
       .addProcessor("TestCheckInProcessor", new ProcessorSupplier[String, CheckIn] {
         override def get(): TestCheckInProcessor = new TestCheckInProcessor
-      }, "KSTREAM-SOURCE-0000000005")
+      }, "KSTREAM-SOURCE-0000000006")
       .addStateStore(checkInStoreBuilder, "TestCheckInProcessor")
       .addSink("Output", Const.OUTPUT_TOPIC, "TestCheckInProcessor")
 
@@ -76,7 +88,7 @@ object MethodRepartition extends App with CirceSupport {
       }
       val checks = keyValueStore.get(storeKey)
       checks.append(newCheckIn)
-      val filterChecks = checks.filter(check => !inWindow(check.timestamp, Const.WINDOW, currentTimeStamp))
+      val filterChecks = checks.filter(check => !inWindow(check.timestamp, windowSize, currentTimeStamp))
       keyValueStore.put(storeKey, filterChecks)
       println("+++++++++++++++++++++++++++++++++++++++++++++++++++")
       val updateMap = new mutable.HashMap[Long, Long]()
@@ -101,5 +113,16 @@ object MethodRepartition extends App with CirceSupport {
     def inWindow(checkTimestamp: Long, window: Long, currentTimestamp: Long): Boolean = {
       checkTimestamp <= (currentTimestamp - window)
     }
+  }
+
+  def loadBeerStyle(styleFilePath: String): mutable.HashSet[String] = {
+    val beerStyles = new mutable.HashSet[String]()
+    val file = new BufferedReader(new FileReader(new File(styleFilePath)))
+    var line = file.readLine()
+    while(line != null) {
+      beerStyles.add(line)
+      line = file.readLine()
+    }
+    beerStyles
   }
 }
